@@ -1,22 +1,21 @@
 import argparse
 import itertools
 import typing
-from turtle import Turtle
-
-PADDING = 10
+from turtle import Turtle, TurtleGraphicsError
 
 Point = tuple[float, float]
 Triangle = tuple[Point, Point, Point]
 
 
 class SierpinskiEnvelopeTurtle(Turtle):
-    def __init__(self) -> None:
+    def __init__(self, speed: int, color: str, bgcolor: str) -> None:
         super().__init__(visible=False)
         self.screen.title("Sierpinski Envelope Pattern")
         self.screen._root.state("zoomed")
-        self.screen.bgcolor("black")
+        self.screen.bgcolor(bgcolor)
 
-        self.pencolor("white")
+        self.speed(speed)
+        self.pencolor(color)
 
     def _goto_without_drawing(self, point: Point) -> None:
         self.penup()
@@ -57,7 +56,7 @@ class SierpinskiEnvelopeTurtle(Turtle):
             self._sierpinski(new_triangle, depth - 1)
 
     def draw_pattern(self, depth: int) -> None:
-        triangle_side_length = self.screen.window_height() / 2 - PADDING
+        triangle_side_length = self.screen.window_height() / 2
 
         triangles = []
         for i in range(6):
@@ -83,6 +82,27 @@ def unsigned_int(value):
         raise argparse.ArgumentTypeError(f"{value} is not a whole number")
 
 
+def int_1_to_10(value):
+    try:
+        ivalue = int(value)
+        if not 1 <= ivalue <= 10:
+            raise argparse.ArgumentTypeError(f"{value} is not a number between 1 to 10")
+        return ivalue
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value} is not a number between 1 to 10")
+
+
+def color(value):
+    try:
+        turtle = Turtle()
+        turtle.hideturtle()
+        turtle.pencolor(value)
+
+        return value
+    except TurtleGraphicsError:
+        raise argparse.ArgumentTypeError(f"'{value}' is not a valid color")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -92,7 +112,28 @@ if __name__ == "__main__":
         help="Recursion depth of the pattern",
     )
 
+    parser.add_argument(
+        "--speed",
+        type=int_1_to_10,
+        default=10,
+        help="Drawing speed on a scale of 1-10",
+    )
+
+    parser.add_argument(
+        "--color",
+        type=color,
+        default="white",
+        help="Color of the pattern (name or hexcode)",
+    )
+
+    parser.add_argument(
+        "--bgcolor",
+        type=color,
+        default="black",
+        help="Background color (name or hexcode)",
+    )
+
     args = parser.parse_args()
 
-    turtle = SierpinskiEnvelopeTurtle()
+    turtle = SierpinskiEnvelopeTurtle(args.speed, args.color, args.bgcolor)
     turtle.draw_pattern(args.depth)
