@@ -15,6 +15,11 @@ class SierpinskiEnvelopeTurtle(Turtle):
 
         self.pencolor("white")
 
+    def _goto_without_drawing(self, x: float, y: float) -> None:
+        self.penup()
+        self.goto(x, y)
+        self.pendown()
+
     def _draw_equilateral_triangle(self, size: float) -> Triangle:
         self.begin_poly()
 
@@ -26,7 +31,7 @@ class SierpinskiEnvelopeTurtle(Turtle):
 
         return cast(Triangle, self.get_poly())
 
-    def draw_pattern(self) -> None:
+    def draw_pattern(self, depth) -> None:
         triangle_side_length = self.screen.window_height() / 2 - 50
 
         triangles = []
@@ -51,5 +56,15 @@ def unsigned_int(value):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--depth",
+        type=unsigned_int,
+        default=10,
+        help="Recursion depth of the pattern",
+    )
+
+    args = parser.parse_args()
+
     turtle = SierpinskiEnvelopeTurtle()
-    turtle.draw_pattern()
+    turtle.draw_pattern(args.depth)
