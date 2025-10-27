@@ -1,6 +1,7 @@
 import argparse
 import itertools
 import typing
+import math
 from turtle import Turtle, TurtleGraphicsError
 
 Point = tuple[float, float]
@@ -38,7 +39,7 @@ class SierpinskiEnvelopeTurtle(Turtle):
         if depth == 0:
             return
 
-        midpoints = []
+        midpoints: list[Point] = []
         for point_pair in zip(triangle, itertools.chain(triangle[1:], triangle[:1])):
             midpoint = (
                 (point_pair[0][0] + point_pair[1][0]) / 2,
@@ -55,12 +56,40 @@ class SierpinskiEnvelopeTurtle(Turtle):
             new_triangle = (midpoints[i], midpoints[(i + 1) % 3], triangle[(i + 1) % 3])
             self._sierpinski(new_triangle, depth - 1)
 
+    def _get_position_after_distance(self, distance: float) -> Point:
+        theta = math.radians(self.heading())
+        new_x = self.xcor() + distance * math.cos(theta)
+        new_y = self.ycor() + distance * math.sin(theta)
+
+        return (new_x, new_y)
+
+    def _envelope(self, angle: tuple[Point, Point, Point], depth: int) -> None:
+        self._goto_without_drawing(angle[1])
+        first_arm_division_length = self.distance(angle[0]) / (2**depth)
+        second_arm_division_length = self.distance(angle[2]) / (2**depth)
+
+        self.setheading(self.towards(angle[0]))
+        first_arm_points = [
+            self._get_position_after_distance(first_arm_division_length * i)
+            for i in range(1, 2**depth)
+        ]
+
+        self.setheading(self.towards(angle[2]))
+        second_arm_points = [
+            self._get_position_after_distance(second_arm_division_length * i)
+            for i in range(1, 2**depth)
+        ]
+
+        for point1, point2 in zip(first_arm_points, second_arm_points[::-1]):
+            self._goto_without_drawing(point1)
+            self.goto(point2)
+
     def draw_pattern(self, depth: int) -> None:
         triangle_side_length = self.screen.window_height() / 2
 
-        triangles = []
+        triangles: list[Triangle] = []
         for i in range(6):
-            if i % 2 == 0:
+            if i % 2 == 1:
                 triangle = self._draw_equilateral_triangle(triangle_side_length)
                 triangles.append(triangle)
 
@@ -68,6 +97,9 @@ class SierpinskiEnvelopeTurtle(Turtle):
 
         for triangle in triangles:
             self._sierpinski(triangle, depth)
+
+        for i in range(3):
+            self._envelope((triangles[i][2], (0, 0), triangles[(i + 1) % 3][1]), depth)
 
         self.screen.mainloop()
 
