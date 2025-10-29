@@ -112,8 +112,6 @@ class PatternTurtle(turtle.Turtle):
         for i in range(3):
             self.envelope((triangles[i][2], (0, 0), triangles[(i + 1) % 3][1]), depth)
 
-        self.screen.mainloop()
-
     def draw_sierpinski_triangle(self, depth: int) -> None:
         triangle_height = self.screen.window_height() - 2 * PADDING
         triangle_side_length = 2 * triangle_height / math.sqrt(3)
@@ -123,23 +121,21 @@ class PatternTurtle(turtle.Turtle):
         triangle = self.draw_equilateral_triangle(triangle_side_length)
         self.sierpinski(triangle, depth)
 
-        self.screen.mainloop()
-
-    def draw_envelope_star(self, depth: int) -> None:
+    def draw_envelope_star(self, depth: int, points: int) -> None:
         height = self.screen.window_height() / 2 - PADDING
         side_length = 2 * height / math.sqrt(3)
 
-        points: list[Point] = []
-        for _ in range(6):
+        end_points: list[Point] = []
+        for _ in range(points):
             self.forward(side_length)
-            points.append(self.position())
+            end_points.append(self.position())
             self.goto_without_drawing((0, 0))
-            self.left(60)
+            self.left(360 / points)
 
-        for point_pair in zip(points, itertools.chain(points[1:], points[:1])):
+        for point_pair in zip(
+            end_points, itertools.chain(end_points[1:], end_points[:1])
+        ):
             self.envelope((point_pair[0], (0, 0), point_pair[1]), depth)
-
-        self.screen.mainloop()
 
 
 class PatternCLIParser(argparse.ArgumentParser):
@@ -147,27 +143,37 @@ class PatternCLIParser(argparse.ArgumentParser):
         super().__init__()
         self.add_arguments()
 
-    def unsigned_int(self, value):
+    def unsigned_int(self, value: str) -> int:
+        error_str = f"{value} is not a whole number"
         try:
             ivalue = int(value)
             if ivalue <= 0:
-                raise argparse.ArgumentTypeError(f"{value} is not a whole number")
+                raise argparse.ArgumentTypeError(error_str)
             return ivalue
         except ValueError:
-            raise argparse.ArgumentTypeError(f"{value} is not a whole number")
+            raise argparse.ArgumentTypeError(error_str)
 
-    def int_1_to_10(self, value):
+    def int_more_than_2(self, value: str) -> int:
+        error_str = f"{value} should be at least 3"
+        try:
+            ivalue = int(value)
+            if ivalue <= 2:
+                raise argparse.ArgumentTypeError(error_str)
+            return ivalue
+        except ValueError:
+            raise argparse.ArgumentTypeError(error_str)
+
+    def int_1_to_10(self, value: str) -> int:
+        error_str = f"{value} is not a number between 1 to 10"
         try:
             ivalue = int(value)
             if not 1 <= ivalue <= 10:
-                raise argparse.ArgumentTypeError(
-                    f"{value} is not a number between 1 to 10"
-                )
+                raise argparse.ArgumentTypeError(error_str)
             return ivalue
         except ValueError:
-            raise argparse.ArgumentTypeError(f"{value} is not a number between 1 to 10")
+            raise argparse.ArgumentTypeError(error_str)
 
-    def color(self, value):
+    def color(self, value: str) -> str:
         try:
             test_turtle = turtle.Turtle()
             test_turtle.hideturtle()
@@ -213,6 +219,13 @@ class PatternCLIParser(argparse.ArgumentParser):
             help="The pattern to be drawn",
         )
 
+        self.add_argument(
+            "--points",
+            type=self.int_more_than_2,
+            default=6,
+            help="Number of points to the star pattern (eg. 5 for a 5 pointed star)",
+        )
+
 
 if __name__ == "__main__":
     parser = PatternCLIParser()
@@ -224,6 +237,8 @@ if __name__ == "__main__":
         case Pattern.SIERPINSKI_TRIANGLE:
             p_turtle.draw_sierpinski_triangle(args.depth)
         case Pattern.ENVELOPE_STAR:
-            p_turtle.draw_envelope_star(args.depth)
+            p_turtle.draw_envelope_star(args.depth, args.points)
         case Pattern.SIERPINSKI_ENVELOPE:
             p_turtle.draw_sierpinski_envelope(args.depth)
+
+    p_turtle.screen.mainloop()
