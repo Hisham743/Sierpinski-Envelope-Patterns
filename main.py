@@ -3,9 +3,19 @@ import itertools
 import typing
 import math
 import turtle
+import enum
 
 Point = tuple[float, float]
 Triangle = tuple[Point, Point, Point]
+
+
+class Pattern(str, enum.Enum):
+    SIERPINSKI_TRIANGLE = "sierpinski_triangle"
+    ENVELOPE_STAR = "envelope_star"
+    SIERPINSKI_ENVELOPE = "sierpinski_envelope"
+
+
+PADDING = 20
 
 
 class PatternTurtle(turtle.Turtle):
@@ -85,11 +95,12 @@ class PatternTurtle(turtle.Turtle):
             self.goto(point2)
 
     def draw_sierpinski_envelope(self, depth: int) -> None:
-        triangle_side_length = self.screen.window_height() / 2
+        triangle_height = self.screen.window_height() / 2 - PADDING
+        triangle_side_length = 2 * triangle_height / math.sqrt(3)
 
         triangles: list[Triangle] = []
         for i in range(6):
-            if i % 2 == 1:
+            if i % 2 == 0:
                 triangle = self.draw_equilateral_triangle(triangle_side_length)
                 triangles.append(triangle)
 
@@ -100,6 +111,33 @@ class PatternTurtle(turtle.Turtle):
 
         for i in range(3):
             self.envelope((triangles[i][2], (0, 0), triangles[(i + 1) % 3][1]), depth)
+
+        self.screen.mainloop()
+
+    def draw_sierpinski_triangle(self, depth: int) -> None:
+        triangle_height = self.screen.window_height() - 2 * PADDING
+        triangle_side_length = 2 * triangle_height / math.sqrt(3)
+
+        self.goto_without_drawing((-triangle_side_length / 2, -triangle_height / 2))
+        self.setheading(0)
+        triangle = self.draw_equilateral_triangle(triangle_side_length)
+        self.sierpinski(triangle, depth)
+
+        self.screen.mainloop()
+
+    def draw_envelope_star(self, depth: int) -> None:
+        height = self.screen.window_height() / 2 - PADDING
+        side_length = 2 * height / math.sqrt(3)
+
+        points: list[Point] = []
+        for _ in range(6):
+            self.forward(side_length)
+            points.append(self.position())
+            self.goto_without_drawing((0, 0))
+            self.left(60)
+
+        for point_pair in zip(points, itertools.chain(points[1:], points[:1])):
+            self.envelope((point_pair[0], (0, 0), point_pair[1]), depth)
 
         self.screen.mainloop()
 
@@ -168,10 +206,24 @@ class PatternCLIParser(argparse.ArgumentParser):
             help="Background color (name or hexcode)",
         )
 
+        self.add_argument(
+            "--pattern",
+            choices=[pattern.value for pattern in Pattern],
+            default=Pattern.SIERPINSKI_ENVELOPE.value,
+            help="The pattern to be drawn",
+        )
+
 
 if __name__ == "__main__":
     parser = PatternCLIParser()
     args = parser.parse_args()
 
     p_turtle = PatternTurtle(args.speed, args.color, args.bgcolor)
-    p_turtle.draw_sierpinski_envelope(args.depth)
+
+    match args.pattern:
+        case Pattern.SIERPINSKI_TRIANGLE:
+            p_turtle.draw_sierpinski_triangle(args.depth)
+        case Pattern.ENVELOPE_STAR:
+            p_turtle.draw_envelope_star(args.depth)
+        case Pattern.SIERPINSKI_ENVELOPE:
+            p_turtle.draw_sierpinski_envelope(args.depth)
