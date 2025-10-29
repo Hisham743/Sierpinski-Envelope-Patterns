@@ -2,13 +2,13 @@ import argparse
 import itertools
 import typing
 import math
-from turtle import Turtle, TurtleGraphicsError
+import turtle
 
 Point = tuple[float, float]
 Triangle = tuple[Point, Point, Point]
 
 
-class SierpinskiEnvelopeTurtle(Turtle):
+class PatternTurtle(turtle.Turtle):
     def __init__(self, speed: int, color: str, bgcolor: str) -> None:
         super().__init__(visible=False)
         self.screen.title("Sierpinski Envelope Pattern")
@@ -18,12 +18,12 @@ class SierpinskiEnvelopeTurtle(Turtle):
         self.speed(speed)
         self.pencolor(color)
 
-    def _goto_without_drawing(self, point: Point) -> None:
+    def goto_without_drawing(self, point: Point) -> None:
         self.penup()
         self.goto(point)
         self.pendown()
 
-    def _draw_equilateral_triangle(self, size: float) -> Triangle:
+    def draw_equilateral_triangle(self, size: float) -> Triangle:
         self.begin_poly()
 
         for i in range(3):
@@ -35,7 +35,7 @@ class SierpinskiEnvelopeTurtle(Turtle):
 
         return typing.cast(Triangle, self.get_poly())
 
-    def _sierpinski(self, triangle: Triangle, depth: int) -> None:
+    def sierpinski(self, triangle: Triangle, depth: int) -> None:
         if depth == 0:
             return
 
@@ -48,124 +48,130 @@ class SierpinskiEnvelopeTurtle(Turtle):
 
             midpoints.append(midpoint)
 
-        self._goto_without_drawing(midpoints[2])
+        self.goto_without_drawing(midpoints[2])
         for midpoint in midpoints:
             self.goto(midpoint)
 
         for i in range(3):
             new_triangle = (midpoints[i], midpoints[(i + 1) % 3], triangle[(i + 1) % 3])
-            self._sierpinski(new_triangle, depth - 1)
+            self.sierpinski(new_triangle, depth - 1)
 
-    def _get_position_after_distance(self, distance: float) -> Point:
+    def get_position_after_distance(self, distance: float) -> Point:
         theta = math.radians(self.heading())
         new_x = self.xcor() + distance * math.cos(theta)
         new_y = self.ycor() + distance * math.sin(theta)
 
         return (new_x, new_y)
 
-    def _envelope(self, angle: tuple[Point, Point, Point], depth: int) -> None:
-        self._goto_without_drawing(angle[1])
+    def envelope(self, angle: tuple[Point, Point, Point], depth: int) -> None:
+        self.goto_without_drawing(angle[1])
         first_arm_division_length = self.distance(angle[0]) / (2**depth)
         second_arm_division_length = self.distance(angle[2]) / (2**depth)
 
         self.setheading(self.towards(angle[0]))
         first_arm_points = [
-            self._get_position_after_distance(first_arm_division_length * i)
+            self.get_position_after_distance(first_arm_division_length * i)
             for i in range(1, 2**depth)
         ]
 
         self.setheading(self.towards(angle[2]))
         second_arm_points = [
-            self._get_position_after_distance(second_arm_division_length * i)
+            self.get_position_after_distance(second_arm_division_length * i)
             for i in range(1, 2**depth)
         ]
 
         for point1, point2 in zip(first_arm_points, second_arm_points[::-1]):
-            self._goto_without_drawing(point1)
+            self.goto_without_drawing(point1)
             self.goto(point2)
 
-    def draw_pattern(self, depth: int) -> None:
+    def draw_sierpinski_envelope(self, depth: int) -> None:
         triangle_side_length = self.screen.window_height() / 2
 
         triangles: list[Triangle] = []
         for i in range(6):
             if i % 2 == 1:
-                triangle = self._draw_equilateral_triangle(triangle_side_length)
+                triangle = self.draw_equilateral_triangle(triangle_side_length)
                 triangles.append(triangle)
 
             self.left(60)
 
         for triangle in triangles:
-            self._sierpinski(triangle, depth)
+            self.sierpinski(triangle, depth)
 
         for i in range(3):
-            self._envelope((triangles[i][2], (0, 0), triangles[(i + 1) % 3][1]), depth)
+            self.envelope((triangles[i][2], (0, 0), triangles[(i + 1) % 3][1]), depth)
 
         self.screen.mainloop()
 
 
-def unsigned_int(value):
-    try:
-        ivalue = int(value)
-        if ivalue <= 0:
+class PatternCLIParser(argparse.ArgumentParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.add_arguments()
+
+    def unsigned_int(self, value):
+        try:
+            ivalue = int(value)
+            if ivalue <= 0:
+                raise argparse.ArgumentTypeError(f"{value} is not a whole number")
+            return ivalue
+        except ValueError:
             raise argparse.ArgumentTypeError(f"{value} is not a whole number")
-        return ivalue
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"{value} is not a whole number")
 
-
-def int_1_to_10(value):
-    try:
-        ivalue = int(value)
-        if not 1 <= ivalue <= 10:
+    def int_1_to_10(self, value):
+        try:
+            ivalue = int(value)
+            if not 1 <= ivalue <= 10:
+                raise argparse.ArgumentTypeError(
+                    f"{value} is not a number between 1 to 10"
+                )
+            return ivalue
+        except ValueError:
             raise argparse.ArgumentTypeError(f"{value} is not a number between 1 to 10")
-        return ivalue
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"{value} is not a number between 1 to 10")
 
+    def color(self, value):
+        try:
+            test_turtle = turtle.Turtle()
+            test_turtle.hideturtle()
+            test_turtle.pencolor(value)
 
-def color(value):
-    try:
-        turtle = Turtle()
-        turtle.hideturtle()
-        turtle.pencolor(value)
+            return value
+        except turtle.TurtleGraphicsError:
+            raise argparse.ArgumentTypeError(f"'{value}' is not a valid color")
 
-        return value
-    except TurtleGraphicsError:
-        raise argparse.ArgumentTypeError(f"'{value}' is not a valid color")
+    def add_arguments(self):
+        self.add_argument(
+            "--depth",
+            type=self.unsigned_int,
+            default=6,
+            help="Recursion depth of the pattern",
+        )
+
+        self.add_argument(
+            "--speed",
+            type=self.int_1_to_10,
+            default=10,
+            help="Drawing speed on a scale of 1-10",
+        )
+
+        self.add_argument(
+            "--color",
+            type=self.color,
+            default="white",
+            help="Color of the pattern (name or hexcode)",
+        )
+
+        self.add_argument(
+            "--bgcolor",
+            type=self.color,
+            default="black",
+            help="Background color (name or hexcode)",
+        )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--depth",
-        type=unsigned_int,
-        default=6,
-        help="Recursion depth of the pattern",
-    )
-
-    parser.add_argument(
-        "--speed",
-        type=int_1_to_10,
-        default=10,
-        help="Drawing speed on a scale of 1-10",
-    )
-
-    parser.add_argument(
-        "--color",
-        type=color,
-        default="white",
-        help="Color of the pattern (name or hexcode)",
-    )
-
-    parser.add_argument(
-        "--bgcolor",
-        type=color,
-        default="black",
-        help="Background color (name or hexcode)",
-    )
-
+    parser = PatternCLIParser()
     args = parser.parse_args()
 
-    turtle = SierpinskiEnvelopeTurtle(args.speed, args.color, args.bgcolor)
-    turtle.draw_pattern(args.depth)
+    p_turtle = PatternTurtle(args.speed, args.color, args.bgcolor)
+    p_turtle.draw_sierpinski_envelope(args.depth)
