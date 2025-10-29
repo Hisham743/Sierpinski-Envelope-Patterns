@@ -15,7 +15,7 @@ class Pattern(str, enum.Enum):
     SIERPINSKI_ENVELOPE = "sierpinski_envelope"
 
 
-PADDING = 20
+PADDING = 50
 
 
 class PatternTurtle(turtle.Turtle):
