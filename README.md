@@ -22,13 +22,13 @@ A Python turtle graphics program that draws beautiful fractal patterns.
 Basic usage:
 
 ```bash
-python pattern_generator.py
+python main.py
 ```
 
 With options:
 
 ```bash
-python pattern_generator.py --pattern sierpinski_triangle --depth 6 --color cyan --bgcolor black
+python main.py --pattern sierpinski_triangle --depth 6 --color cyan --bgcolor black
 ```
 
 ### Options
